@@ -14,6 +14,8 @@ public:
 
     std::string get_data();
 
+    void get_data_loop(const std::function<bool(const char* data, size_t len)>& callback);
+
 private:
     std::shared_ptr<mqd_t> queueId;
     std::string queue_name;

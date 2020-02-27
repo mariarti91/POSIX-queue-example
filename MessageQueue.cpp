@@ -1,11 +1,13 @@
 #include "MessageQueue.h"
 
 #include <cstring>
+#include <iostream>
 
 MessageQueue::MessageQueue(std::string qname)
 :queue_name(std::move(qname))
 {
     queueId = std::shared_ptr<mqd_t>(new mqd_t(-1), [this](const mqd_t *q){
+        std::cout << "delete queue" << std::endl;
         mq_close(*q);
         mq_unlink(queue_name.c_str());
     });
@@ -36,4 +38,27 @@ std::string MessageQueue::get_data()
     int err = errno;
     if(err) throw std::runtime_error(std::string{"MessageQueue::get_data() "} + strerror(err));
     return std::move(std::string{buf});
+}
+
+void MessageQueue::get_data_loop(const std::function<bool(const char *data, size_t len)>& callback)
+{
+    struct mq_attr attrs = {0, 0, 0, 0};
+    mq_getattr(*queueId, &attrs);
+    size_t buf_size = attrs.mq_msgsize;
+    char *buf = new char[buf_size];
+
+    //timeout 0,05 sec
+    timespec tm{0, 50000000};
+
+    size_t received_size;
+    for(;;){
+        if((received_size = mq_timedreceive(*queueId, buf, buf_size, nullptr, &tm)) == -1)
+        {
+            int err = errno;
+            if (err == ETIMEDOUT) continue;
+            throw std::runtime_error(std::string{"MessageQueue::get_data_loop(...) "} + strerror(err));
+        }
+
+        if(!callback(buf, received_size)) break;
+    }
 }
