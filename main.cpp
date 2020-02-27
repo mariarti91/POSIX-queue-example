@@ -8,24 +8,28 @@
 
 void child_payload(const std::shared_ptr<MessageQueue>& queue)
 {
-    queue->get_data_loop([](const char *data, size_t len)-> bool{
-        std::cout << "chile get message: " << std::string{data} << std::endl;
-        return true;
-    });
+
+    for(int i = 0; i < 1000; ++i){
+        std::string message = "this message with " + std::to_string(i);
+        queue->send_data(message);
+        std::this_thread::sleep_for(std::chrono::seconds(2));
+    }
 
     std::cout << "child process finished" << std::endl;
 }
 
 void parent_payload(const std::shared_ptr<MessageQueue>& queue, pid_t child_pid)
 {
-    for(int i = 0; i < 10; ++i){
-        std::string message = "this message with " + std::to_string(i);
-        queue->send_data(message);
-        std::this_thread::sleep_for(std::chrono::seconds(2));
-    }
+    signal(SIGCHLD, SIG_IGN);
 
-    kill(child_pid, SIGINT);
-    std::cout << "kill sended" << std::endl;
+    int count = 0;
+
+    queue->get_data_loop([&count](const char *data, size_t len)-> bool{
+        std::cout << "parent get message: " << std::string{data} << std::endl;
+        return ++count < 10;
+    });
+
+    //std::cout << "kill sended" << std::endl;
 }
 
 int main() {
