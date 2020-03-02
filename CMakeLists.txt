@@ -3,5 +3,8 @@ project(POSIX_queues)
 
 set(CMAKE_CXX_STANDARD 17)
 
-add_executable(test main.cpp MessageQueue.cpp MessageQueue.h)
-target_link_libraries(test rt)
+include_directories(MessageQueueLib/includes)
+
+add_subdirectory(MessageQueueLib)
+add_subdirectory(server)
+add_subdirectory(client)
